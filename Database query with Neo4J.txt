@@ -1,0 +1,76 @@
+1. Find all producers that produced the movie When Harry Met Sally.
+MATCH (p:Person)-[:PRODUCED]->(m:Movie)
+WHERE m.title = "When Harry Met Sally"
+RETURN p.name
+
+2. Find directors who have directed more than 2 movies.  Return the name of the director and the count of movies they directed, ordered by movie count in descending order.
+MATCH (p:Person)-[:DIRECTED]->(m:Movie)
+WITH p.name AS director, count(m.title) AS movieCount
+WHERE movieCount > 2
+RETURN director, movieCount
+ORDER BY movieCount DESC
+
+3. Find the actors who acted in 5+ movies and the movies in which they acted.  Return the name of the actor, and the title of the films, ordered by the number of films acted per actor in descending order.
+MATCH (p:Person)-[:ACTED_IN]->(m:Movie)
+WITH p.name as name, collect(m.title) as movies
+WHERE size(movies) >= 5
+RETURN name, movies
+ORDER by size(movies) DESC
+
+4. Find the people who were the producer, writer, AND director (the same person who held all 3 roles) at the same time on a film. Return the names of the people and the titles of the films.
+MATCH (p:Person)-[:PRODUCED]->(m:Movie)<-[:DIRECTED]-(p:Person)-[:WROTE]->(m:Movie)
+RETURN p.name, m.title
+
+5. Find all the actors that are exactly 3 degrees away from Tom Hanks.  NOTE: In this case, we want to define a "degree" as a common connection between two people.  So, if Tom Hanks is connected to Gary Sinise by way of them both acting in Apollo 13, then that connection has a path length of 2, and we would consider Gary Sinise to be 1 degree away from Tom Hanks since they both acted in the same movie.
+MATCH (hanks:Person {name:"Tom Hanks"})-[:ACTED_IN*6]-(actor:Person)
+RETURN DISTINCT actor.name
+
+6. Update database to reflect new name ("Larry Wachowski") for director "Lana Wachowski".
+MATCH (p:Person)
+WHERE p.name = "Lana Wachowski"
+SET p.name = "Larry Wachowski"
+RETURN p
+
+7. Create a section of fun movies whose summary contains the keyword "fun".
+MATCH (p:Person)-[r:REVIEWED]->(m:Movie)
+WHERE r.summary =~ '(?i).*fun.*'
+RETURN DISTINCT(m.title) as movie
+
+8. List all the release years and count all movies released in that year.
+MATCH (m:Movie)
+WITH m.released as release_year, count(m.title) as moviesCount
+RETURN release_year, moviesCount
+
+9. List all the movies whose rating >= 90.
+MATCH (p:Person)-[r:REVIEWED]->(m:Movie)
+WHERE r.rating >= 90
+RETURN m.title
+
+10. List the top producers who are most likely to entertain new movies production hint: Producers with most movies produced.
+#listing top 3 producers
+MATCH (p:Person)-[:PRODUCED]->(m:Movie)
+WITH p.name AS producers, count(m.title) AS moviesCount
+RETURN producers
+ORDER BY moviesCount DESC
+LIMIT 3
+
+11. List all the movies along with a number of reviews received. order the results by a number of reviews in descending order.
+MATCH (p:Person)-[:REVIEWED]->(m:Movie)
+RETURN m.title, count(p) AS numReviews
+ORDER BY numReviews DESC
+
+12. Find the shortest path between movies "The Matrix" and "The Matrix Reloaded".
+MATCH path = shortestPath((m1:Movie {title:"The Matrix"})-[*]-(m2:Movie {title:"The Matrix Reloaded"}))
+RETURN path
+
+13. List all the writers and the list of movies they have written.
+MATCH (p:Person)-[:WROTE]->(m:Movie)
+RETURN p.name, m.title
+
+14. List top 15 actors who have co-acted with each other the most. Ignore The Matrix trilogy for this analysis.
+MATCH (p1:Person)-[:ACTED_IN]->(m:Movie)<-[:ACTED_IN]-(p2:Person)
+WHERE id(p1) < id(p2) AND NOT m.title STARTS WITH  "The Matrix"
+WITH p1.name AS actor1, p2.name AS actor2, collect(m.title) as commonMovies
+RETURN actor1, actor2
+ORDER BY size(commonMovies) DESC
+LIMIT 15

@@ -1,0 +1,206 @@
+//Sakshi Shende
+// MongoDB
+
+
+//1. Return the total number of customers living in California
+db.customers.find({
+    "District" : "California"
+}).count()
+
+//2. List all movies that are rated NC-17.  Return the title and the rating, sorted alphabetically by title.
+db.films.find({
+    "Rating" : "NC-17"
+    },
+    {
+        "Title" : 1,
+        "Rating" : 1
+    },
+    {
+        $sort: { "Title" : 1 }
+    }
+)
+
+//3. List the movie titles and the count of actors in each movie, sorted alphabetically by title.
+db.films.aggregate({
+    $project: {
+                "Title" : 1,
+                CountActors : { $size : "$Actors" }
+              }
+    },
+    { 
+        $sort:  { "Title": 1 } 
+    }
+)
+
+//4. List the count of movies by category.  Return the category and the count, sorted by the count per category descending.
+db.films.aggregate({
+    $group: {
+                _id : "$Category",
+                CountMovies : { $sum : 1 }
+            }
+    },
+    {
+         $sort : { CountMovies : -1 }
+    } 
+)
+
+//5. List the top 2 movies with movie length greater than 25mins or which has commentaries as special features.  Return the movie title, length, and special features.
+db.films.aggregate([
+    { $match: {
+                   $or: [
+                           { "Length" : { '$gt': 25 } },
+                           { "Special Features" : /.*Commentaries.*/ }
+                        ]
+              }
+    },
+    {
+        $sort: { "Length" : -1 } 
+    },
+    {
+         $limit: 2
+    },
+    {
+        $project: {
+                        "Title" : 1,
+                        "Length" : 1,
+                        "Special Features" : 1
+                   }
+     },    
+])
+
+//6. List top 10 countries with the most number of customers.
+db.customers.aggregate({
+    $group: {
+               _id: "$Country",
+               CountCustomers: { $sum: 1 }
+            }
+    },
+    {
+         $sort : { CountCustomers: -1 }
+    },
+    { 
+        $limit: 10
+    },
+    {
+        $project: { _id : 1 }
+    }
+)
+
+//7. List all replacement costs along with count for each replacement cost.
+db.films.aggregate({
+    $group: {
+                _id: "$Replacement Cost",
+                CountCost: { $sum: 1 }
+        }
+})
+
+//8. List all films relating to Mexico for a Cinco de Mayo promotion special.
+db.films.find({
+    "Description": /.*Mexico.*/
+    },
+    {   
+        "Title": 1
+    }
+)
+
+//9. List all the new releases for 2020 in order to promote them.
+//year is not present in films.json file
+
+//10. Calculate revenue for the Month of August 2005.
+db.customers.aggregate([
+    {
+        $unwind: "$Rentals"
+    },
+    { 
+        $unwind: "$Rentals.Payments"
+    },
+    {
+        $match: { "Rentals.Payments.Payment Date" : /2005-08.*/ }
+    },
+    {
+        $group: {
+                    _id: null,
+                    Revenue: { $sum : "$Rentals.Payments.Amount" }
+                 }
+    }
+])     
+
+//11. Find movies with the highest number of Actors.
+db.films.aggregate([
+    {
+        $project: {
+                      "Title": 1,
+                      CountActors : { $size : "$Actors"}
+                  }
+     },
+     {
+         $sort: { CountActors: -1 }
+     }
+])
+
+//12. List top Movie rating that is rented the most / popular among the customers.
+//listed top 1 movie rating
+db.customers.aggregate([
+    {
+        $unwind: "$Rentals"
+    },
+    {
+        $lookup:
+            {
+                from : "films",
+                localField : "Rentals.Film Title",
+                foreignField : "Title",
+                as :"films"
+             }
+     },
+     {
+         $group: {
+                     _id: "$films.Rating",
+                     CountRentals: { $sum : 1 }                     
+                 }
+     },
+     {
+         $sort: { CountRentals : -1 }
+     },
+     {
+         $limit : 1
+     },
+     {
+         $project: { _id : 1 }
+     }
+])
+
+//13. List number of actors who worked in each category of films.
+db.films.aggregate({
+    $unwind: "$Actors"},
+    {
+        $group: {
+                    _id: "$Category",
+                    CountActors: { $sum: 1 }
+                }
+     }
+)
+     
+//14. Find the average length of movies in each category.
+db.films.aggregate([
+    {
+        $group: {
+                    _id: "$Category",
+                    AvgLength: { $avg: { $toInt: "$Length" } }
+                }
+    }
+])
+
+//15. List the customers with at least 40 rentals.
+db.customers.aggregate([
+    {
+        $project: {                    
+                    "First Name": 1,
+                    "Last Name": 1,
+                    CountRentals: { $size: "$Rentals" }
+                  }
+    },
+    {
+       $match: { $expr: { "$gte": [ "$CountRentals", 40 ] } }
+    }
+])
